@@ -2,9 +2,18 @@
 """
 METATRON - metatron.py
 Main CLI entry point. Wires db.py + tools.py + search.py + llm.py together.
+Multi-model support for local and cloud LLM providers.
 Run with: python metatron.py
 """
 from export import export_menu
+from llm_providers import LLMProviderFactory
+from config import (
+    load_config, get_active_provider, set_active_provider,
+    prompt_provider_selection, prompt_provider_credentials,
+    update_provider_config, get_resolved_provider_config,
+    show_current_provider, show_provider_status
+)
+from llm import analyse_target_with_provider
 import os
 import sys
 from db import (
@@ -32,7 +41,6 @@ from db import (
     print_session
 )
 from tools import interactive_tool_run, format_recon_for_llm, run_default_recon
-from llm import analyse_target
 
 
 # ─────────────────────────────────────────────
@@ -50,9 +58,21 @@ def banner():
     ██║ ╚═╝ ██║███████╗   ██║   ██║  ██║   ██║   ██║  ██║╚██████╔╝██║ ╚████║
     ╚═╝     ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
 \033[0m
-    \033[90mAI Penetration Testing Assistant  |  Model: metatron-qwen  |  Parrot OS\033[0m
-    \033[90m─────────────────────────────────────────────────────────────────────\033[0m
+    \033[90mAI Penetration Testing Assistant  |  Parrot OS\033[0m
 """)
+    
+    # Show current provider
+    try:
+        active_provider = get_active_provider()
+        config = get_resolved_provider_config(active_provider)
+        provider = LLMProviderFactory.create(active_provider, config)
+        if provider:
+            info = provider.get_model_info()
+            print(f"    \033[92m{info['icon']} Using: {info['provider']} ({info['model']})\033[0m")
+    except Exception:
+        pass
+    
+    print("    \033[90m─────────────────────────────────────────────────────────────────────\033[0m")
 
 
 # ─────────────────────────────────────────────
@@ -124,9 +144,33 @@ def new_scan():
         delete_full_session(sl_no)
         return
 
-    # send to AI
+    # Get active provider
     divider("AI ANALYSIS")
-    result = analyse_target(target, raw_scan)
+    try:
+        active_provider = get_active_provider()
+        provider_config = get_resolved_provider_config(active_provider)
+        provider = LLMProviderFactory.create(active_provider, provider_config)
+        
+        if not provider:
+            error(f"Provider '{active_provider}' not found!")
+            delete_full_session(sl_no)
+            return
+        
+        # Validate provider
+        is_valid, msg = provider.validate()
+        if not is_valid:
+            error(f"Provider validation failed: {msg}")
+            delete_full_session(sl_no)
+            return
+        
+        info(f"Using {provider.get_model_info()['provider']}")
+        
+        # ✅ Use provider-based analysis
+        result = analyse_target_with_provider(provider, target, raw_scan)
+    except Exception as e:
+        error(f"Analysis error: {e}")
+        delete_full_session(sl_no)
+        return
 
     # ── save everything to DB ──────────────────
     divider("SAVING TO DATABASE")
@@ -235,6 +279,66 @@ def view_history():
             if confirm(f"\n\033[91mPermanently delete ENTIRE session SL# {sl_no} from all tables?\033[0m"):
                 delete_full_session(sl_no)
                 success(f"Session SL# {sl_no} wiped.")
+
+
+# ─────────────────────────────────────────────
+# PROVIDER SETTINGS MENU
+# ─────────────────────────────────────────────
+
+def provider_settings_menu():
+    while True:
+        divider("PROVIDER SETTINGS")
+        
+        # Show current provider
+        show_current_provider()
+        
+        print("  \033[92m[1]\033[0m  Change Provider")
+        print("  \033[92m[2]\033[0m  Configure Credentials")
+        print("  \033[92m[3]\033[0m  View All Providers Status")
+        print("  \033[92m[4]\033[0m  Back to Main Menu")
+        divider()
+        
+        choice = prompt("settings> ")
+        
+        if choice == "1":
+            # Change provider
+            provider_name = prompt_provider_selection()
+            if provider_name:
+                set_active_provider(provider_name)
+                success(f"Provider set to: {provider_name}")
+                input("\n\033[90mPress Enter to continue...\033[0m")
+        
+        elif choice == "2":
+            # Configure credentials
+            provider_name = prompt_provider_selection()
+            if provider_name:
+                new_config = prompt_provider_credentials(provider_name)
+                update_provider_config(provider_name, new_config)
+                
+                # Validate
+                provider_config = get_resolved_provider_config(provider_name)
+                provider = LLMProviderFactory.create(provider_name, provider_config)
+                if provider:
+                    is_valid, msg = provider.validate()
+                    if is_valid:
+                        success(f"✓ {msg}")
+                        set_active_provider(provider_name)
+                    else:
+                        error(f"✗ {msg}")
+                
+                input("\n\033[90mPress Enter to continue...\033[0m")
+        
+        elif choice == "3":
+            # Show all providers status
+            show_provider_status()
+            input("\n\033[90mPress Enter to continue...\033[0m")
+        
+        elif choice == "4":
+            # Back to main
+            return
+        
+        else:
+            warn("Invalid choice.")
 
 
 # ─────────────────────────────────────────────
@@ -423,7 +527,8 @@ def main_menu():
         banner()
         print("  \033[92m[1]\033[0m  New Scan")
         print("  \033[92m[2]\033[0m  View History")
-        print("  \033[92m[3]\033[0m  Exit")
+        print("  \033[92m[3]\033[0m  Provider Settings")
+        print("  \033[92m[4]\033[0m  Exit")
         divider()
 
         choice = prompt("metatron> ")
@@ -437,6 +542,9 @@ def main_menu():
             input("\n\033[90mPress Enter to continue...\033[0m")
 
         elif choice == "3":
+            provider_settings_menu()
+
+        elif choice == "4":
             print("\n\033[91m[*] Shutting down Metatron. Stay legal.\033[0m\n")
             sys.exit(0)
 
@@ -451,4 +559,25 @@ def main_menu():
 if __name__ == "__main__":
     if not check_db():
         sys.exit(1)
+    
+    # ✅ Initialize config and validate provider
+    try:
+        from config import ensure_config_dir, load_config, get_active_provider
+        ensure_config_dir()
+        load_config()
+        
+        active_provider = get_active_provider()
+        provider_config = get_resolved_provider_config(active_provider)
+        provider = LLMProviderFactory.create(active_provider, provider_config)
+        
+        if not provider:
+            warn(f"Warning: Provider '{active_provider}' not found. Please configure in Provider Settings.")
+        else:
+            is_valid, msg = provider.validate()
+            if not is_valid:
+                warn(f"Warning: Provider '{active_provider}' validation failed: {msg}")
+                warn("Please reconfigure in Provider Settings.")
+    except Exception as e:
+        warn(f"Warning: Could not initialize provider config: {e}")
+    
     main_menu()
