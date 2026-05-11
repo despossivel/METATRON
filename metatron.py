@@ -22,6 +22,7 @@ from db import (
     edit_vulnerability,
     edit_fix,
     edit_exploit,
+    edit_history,
     edit_summary_risk,
     delete_vulnerability,
     delete_exploit,
@@ -180,37 +181,60 @@ def new_scan():
 # ─────────────────────────────────────────────
 
 def view_history():
-    divider("SCAN HISTORY")
-    rows = get_all_history()
+    while True:
+        divider("SCAN HISTORY")
+        rows = get_all_history()
 
-    if not rows:
-        warn("No scans in database yet.")
-        return
+        if not rows:
+            warn("No scans in database yet.")
+            return
 
-    print_history(rows)
+        print_history(rows)
+        print("  [1] View session details")
+        print("  [2] Edit history record")
+        print("  [3] Delete full session")
+        print("  [4] Back")
+        divider()
 
-    sl_no_str = prompt("Enter SL# to view details (or press Enter to go back): ")
-    if not sl_no_str:
-        return
+        action = prompt("History action: ")
 
-    try:
+        if action == "4" or action == "":
+            return
+
+        if action not in ("1", "2", "3"):
+            warn("Invalid choice.")
+            continue
+
+        sl_no_str = prompt("Enter SL#: ")
+        if not sl_no_str.isdigit():
+            error("Invalid SL#.")
+            continue
+
         sl_no = int(sl_no_str)
-    except ValueError:
-        error("Invalid SL#.")
-        return
+        data = get_session(sl_no)
+        if not data["history"]:
+            error(f"SL# {sl_no} not found.")
+            continue
 
-    data = get_session(sl_no)
-    if not data["history"]:
-        error(f"SL# {sl_no} not found.")
-        return
+        if action == "1":
+            print_session(data)
 
-    print_session(data)
+            if confirm("Export this session?"):
+                export_menu(data)
 
-    if confirm("Export this session?"):
-        export_menu(data)
+            if confirm("Edit or delete anything in this session?"):
+                edit_delete_menu(sl_no)
 
-    if confirm("Edit or delete anything in this session?"):
-        edit_delete_menu(sl_no)
+        elif action == "2":
+            print("  Fields: target / status / scan_date")
+            field = prompt("Field to edit: ").strip()
+            value = prompt(f"New value for '{field}': ")
+            edit_history(sl_no, field, value)
+
+        elif action == "3":
+            if confirm(f"\n\033[91mPermanently delete ENTIRE session SL# {sl_no} from all tables?\033[0m"):
+                delete_full_session(sl_no)
+                success(f"Session SL# {sl_no} wiped.")
 
 
 # ─────────────────────────────────────────────

@@ -231,6 +231,24 @@ def edit_summary_risk(sl_no: int, risk_level: str):
     print(f"[+] Summary risk_level updated for SL#{sl_no}")
 
 
+def edit_history(sl_no: int, field: str, value: str):
+    """Edit a single field in history by sl_no."""
+    allowed = {"target", "status", "scan_date"}
+    if field not in allowed:
+        print(f"[!] Invalid field: {field}. Allowed: {allowed}")
+        return
+
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        f"UPDATE history SET {field} = %s WHERE sl_no = %s",
+        (value, sl_no)
+    )
+    conn.commit()
+    conn.close()
+    print(f"[+] history.{field} updated for SL#{sl_no}")
+
+
 # ─────────────────────────────────────────────
 # DELETE FUNCTIONS
 # ─────────────────────────────────────────────
