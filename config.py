@@ -48,8 +48,10 @@ def get_default_config() -> Dict:
             },
             "openai": {
                 "api_key": "",
-                "model": "gpt-4",
-                "temperature": 0.7
+                "model": "gpt-4o",
+                "temperature": 0.7,
+                "max_output_tokens": 2000,
+                "context_window": 128000
             },
             "anthropic": {
                 "api_key": "",
@@ -213,7 +215,11 @@ def prompt_provider_credentials(provider_name: str) -> Dict:
         key = input("OpenAI API Key (leave empty to use env OPENAI_API_KEY): ").strip()
         if key:
             new_config["api_key"] = key
-        new_config["model"] = input(f"Model [{config.get('model', 'gpt-4')}]: ").strip() or config.get('model')
+        new_config["model"] = input(f"Model [{config.get('model', 'gpt-4o')}]: ").strip() or config.get('model', 'gpt-4o')
+        max_output_tokens = input(
+            f"Max output tokens [{config.get('max_output_tokens', 2000)}]: "
+        ).strip()
+        new_config["max_output_tokens"] = int(max_output_tokens) if max_output_tokens else config.get('max_output_tokens', 2000)
     
     elif provider_name == "anthropic":
         key = input("Anthropic API Key (leave empty to use env ANTHROPIC_API_KEY): ").strip()
