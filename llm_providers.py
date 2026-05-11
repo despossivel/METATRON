@@ -128,17 +128,16 @@ class OllamaProvider(LLMProvider):
         try:
             resp = requests.get(self.url.replace("/api/chat", "/api/tags"), timeout=5)
             resp.raise_for_status()
-            return (True, "✓ Ollama connection successful")
+            return (True, "Ollama connection successful")
         except Exception as e:
-            return (False, f"✗ Ollama connection failed: {e}")
+            return (False, f"Ollama connection failed: {e}")
     
     def get_model_info(self) -> Dict:
         return {
             "provider": "Ollama",
             "model": self.model,
             "cost": "Free",
-            "location": "Local",
-            "icon": "🖥️"
+            "location": "Local"
         }
 
 
@@ -178,19 +177,18 @@ class OpenAIProvider(LLMProvider):
             import openai
             openai.api_key = self.api_key
             openai.Model.list()
-            return (True, "✓ OpenAI API key valid")
+            return (True, "OpenAI API key valid")
         except ImportError:
-            return (False, "✗ openai package not installed")
+            return (False, "openai package not installed")
         except Exception as e:
-            return (False, f"✗ OpenAI validation failed: {str(e)[:100]}")
+            return (False, f"OpenAI validation failed: {str(e)[:100]}")
     
     def get_model_info(self) -> Dict:
         return {
             "provider": "OpenAI",
             "model": self.model,
             "cost": "$0.03-0.06 per 1M tokens",
-            "location": "Cloud",
-            "icon": "☁️"
+            "location": "Cloud"
         }
 
 
@@ -240,19 +238,18 @@ class AnthropicProvider(LLMProvider):
                 max_tokens=10,
                 messages=[{"role": "user", "content": "Hi"}]
             )
-            return (True, "✓ Anthropic API key valid")
+            return (True, "Anthropic API key valid")
         except ImportError:
-            return (False, "✗ anthropic package not installed")
+            return (False, "anthropic package not installed")
         except Exception as e:
-            return (False, f"✗ Anthropic validation failed: {str(e)[:100]}")
+            return (False, f"Anthropic validation failed: {str(e)[:100]}")
     
     def get_model_info(self) -> Dict:
         return {
             "provider": "Anthropic",
             "model": self.model,
             "cost": "$0.003-0.024 per 1M tokens",
-            "location": "Cloud",
-            "icon": "☁️"
+            "location": "Cloud"
         }
 
 
@@ -297,7 +294,7 @@ class AzureOpenAIProvider(LLMProvider):
     def validate(self) -> tuple[bool, str]:
         try:
             if not all([self.api_key, self.resource, self.deployment]):
-                return (False, "✗ Missing Azure credentials (api_key, resource, deployment)")
+                return (False, "Missing Azure credentials (api_key, resource, deployment)")
             
             from openai import AzureOpenAI
             client = AzureOpenAI(
@@ -311,19 +308,18 @@ class AzureOpenAIProvider(LLMProvider):
                 messages=[{"role": "user", "content": "Hi"}],
                 max_tokens=10
             )
-            return (True, "✓ Azure OpenAI credentials valid")
+            return (True, "Azure OpenAI credentials valid")
         except ImportError:
-            return (False, "✗ openai package not installed")
+            return (False, "openai package not installed")
         except Exception as e:
-            return (False, f"✗ Azure validation failed: {str(e)[:100]}")
+            return (False, f"Azure validation failed: {str(e)[:100]}")
     
     def get_model_info(self) -> Dict:
         return {
             "provider": "Azure OpenAI",
             "model": self.deployment,
             "cost": "Depends on Azure plan",
-            "location": "Azure Cloud",
-            "icon": "☁️"
+            "location": "Azure Cloud"
         }
 
 

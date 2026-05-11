@@ -175,9 +175,9 @@ def prompt_provider_selection() -> Optional[str]:
     
     providers = LLMProviderFactory.get_provider_names()
     
-    print("\n\033[33m{'─'*50}\033[0m")
+    print(f"\n\033[33m{'─' * 50}\033[0m")
     print("\033[92m  Select LLM Provider:\033[0m")
-    print("\033[33m{'─'*50}\033[0m\n")
+    print(f"\033[33m{'─' * 50}\033[0m\n")
     
     for idx, (key, name) in enumerate(providers.items(), 1):
         print(f"  \033[92m[{idx}]\033[0m  {name}")
@@ -198,9 +198,9 @@ def prompt_provider_selection() -> Optional[str]:
 
 def prompt_provider_credentials(provider_name: str) -> Dict:
     """Interactive menu for entering provider credentials"""
-    print("\n\033[33m{'─'*50}\033[0m")
+    print(f"\n\033[33m{'─' * 50}\033[0m")
     print(f"\033[92m  Configure {provider_name.upper()}:\033[0m")
-    print("\033[33m{'─'*50}\033[0m\n")
+    print(f"\033[33m{'─' * 50}\033[0m\n")
     
     config = get_provider_config(provider_name)
     new_config = config.copy()
@@ -241,7 +241,7 @@ def show_current_provider():
     
     if provider:
         info = provider.get_model_info()
-        print(f"\n\033[92m{info['icon']} Current Provider: {info['provider']} ({info['model']})\033[0m")
+        print(f"\n\033[92mCurrent Provider: {info['provider']} ({info['model']})\033[0m")
         print(f"   Cost: {info['cost']}")
         print(f"   Location: {info['location']}\n")
     else:
@@ -252,9 +252,9 @@ def show_provider_status():
     """Show status of all providers"""
     from llm_providers import LLMProviderFactory
     
-    print("\n\033[33m{'─'*50}\033[0m")
+    print(f"\n\033[33m{'─' * 50}\033[0m")
     print("\033[92m  Provider Status:\033[0m")
-    print("\033[33m{'─'*50}\033[0m\n")
+    print(f"\033[33m{'─' * 50}\033[0m\n")
     
     for provider_name in LLMProviderFactory.get_providers():
         provider_config = get_resolved_provider_config(provider_name)
@@ -262,7 +262,7 @@ def show_provider_status():
         
         if provider:
             is_valid, msg = provider.validate()
-            status = "\033[92m✓\033[0m" if is_valid else "\033[91m✗\033[0m"
+            status = "\033[92mOK\033[0m" if is_valid else "\033[91mERR\033[0m"
             info = provider.get_model_info()
             print(f"  {status} {info['provider']} ({info['model']})")
             print(f"     {msg}\n")

@@ -68,7 +68,7 @@ def banner():
         provider = LLMProviderFactory.create(active_provider, config)
         if provider:
             info = provider.get_model_info()
-            print(f"    \033[92m{info['icon']} Using: {info['provider']} ({info['model']})\033[0m")
+            print(f"    \033[92mUsing: {info['provider']} ({info['model']})\033[0m")
     except Exception:
         pass
     
@@ -99,7 +99,7 @@ def warn(text):
 
 
 def error(text):
-    print(f"\033[91m[✗] {text}\033[0m")
+    print(f"\033[91m[x] {text}\033[0m")
 
 
 def info(text):
@@ -165,7 +165,7 @@ def new_scan():
         
         info(f"Using {provider.get_model_info()['provider']}")
         
-        # ✅ Use provider-based analysis
+        # Use provider-based analysis
         result = analyse_target_with_provider(provider, target, raw_scan)
     except Exception as e:
         error(f"Analysis error: {e}")
@@ -321,10 +321,10 @@ def provider_settings_menu():
                 if provider:
                     is_valid, msg = provider.validate()
                     if is_valid:
-                        success(f"✓ {msg}")
+                        success(msg)
                         set_active_provider(provider_name)
                     else:
-                        error(f"✗ {msg}")
+                        error(msg)
                 
                 input("\n\033[90mPress Enter to continue...\033[0m")
         
@@ -560,7 +560,7 @@ if __name__ == "__main__":
     if not check_db():
         sys.exit(1)
     
-    # ✅ Initialize config and validate provider
+    # Initialize config and validate provider
     try:
         from config import ensure_config_dir, load_config, get_active_provider
         ensure_config_dir()

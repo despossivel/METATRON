@@ -9,37 +9,37 @@ print("""
 ║                   METATRON - Multi-Model Setup Guide                       ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
-📋 AVAILABLE PROVIDERS:
+AVAILABLE PROVIDERS:
 
-  1️⃣  OLLAMA (Local - Default)
-      ✓ Free and private
-      ✓ No internet needed
-      ✓ No API keys required
-      ✗ Slower than cloud models
+  1. OLLAMA (Local - Default)
+    - Free and private
+    - No internet needed
+    - No API keys required
+    - Slower than cloud models
       Setup: Just use as is (requires Ollama running locally)
 
-  2️⃣  OPENAI (GPT-4)
-      ✓ Most advanced model
-      ✓ Excellent for complex analysis
-      💰 Cost: ~$0.03-0.06 per 1M tokens
+  2. OPENAI (GPT-4)
+    - Most advanced model
+    - Excellent for complex analysis
+    Cost: ~$0.03-0.06 per 1M tokens
       Setup: 
         1. Get API key from https://platform.openai.com/api-keys
         2. Start METATRON and go to Provider Settings
         3. Configure with your API key
 
-  3️⃣  ANTHROPIC (Claude)
-      ✓ Great reasoning capabilities
-      ✓ 200K context window (largest)
-      💰 Cost: ~$0.003-0.024 per 1M tokens
+  3. ANTHROPIC (Claude)
+    - Great reasoning capabilities
+    - 200K context window (largest)
+    Cost: ~$0.003-0.024 per 1M tokens
       Setup:
         1. Get API key from https://console.anthropic.com/
         2. Start METATRON and go to Provider Settings
         3. Configure with your API key
 
-  4️⃣  AZURE OPENAI (Copilot)
-      ✓ Enterprise integration
-      ✓ Microsoft ecosystem compatibility
-      💰 Cost: Depends on Azure plan
+  4. AZURE OPENAI (Copilot)
+    - Enterprise integration
+    - Microsoft ecosystem compatibility
+    Cost: Depends on Azure plan
       Setup:
         1. Create Azure OpenAI resource
         2. Get: API Key, Resource Name, Deployment Name
@@ -49,7 +49,7 @@ print("""
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚀 QUICK START:
+QUICK START:
 
 METHOD 1: Via Environment Variables (Fastest)
 ──────────────────────────────────────────────
@@ -95,15 +95,15 @@ METHOD 3: Interactive Menu (Recommended)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔐 SECURITY NOTES:
+SECURITY NOTES:
 
-  ⚠️  API Keys are sensitive!
+  API Keys are sensitive!
   
   Best practices:
-  ✓ Store API keys in environment variables (OPENAI_API_KEY, etc)
-  ✓ Don't commit ~/.metatron/config.yml to git (add to .gitignore)
-  ✓ Config file is protected with 600 permissions (user-only readable)
-  ✓ Never hardcode API keys in code
+  - Store API keys in environment variables (OPENAI_API_KEY, etc)
+  - Don't commit ~/.metatron/config.yml to git (add to .gitignore)
+  - Config file is protected with 600 permissions (user-only readable)
+  - Never hardcode API keys in code
   
   If using config file:
   $ chmod 600 ~/.metatron/config.yml
@@ -111,7 +111,7 @@ METHOD 3: Interactive Menu (Recommended)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 USAGE EXAMPLES:
+USAGE EXAMPLES:
 
   # Switch between providers in same session
   metatron> [1] New Scan → Scan runs
@@ -128,7 +128,7 @@ METHOD 3: Interactive Menu (Recommended)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 COST COMPARISON (for 100K tokens):
+COST COMPARISON (for 100K tokens):
 
   Ollama:        $0.00 (Free, local)
   OpenAI GPT-4:  $3-6 USD
@@ -138,7 +138,7 @@ METHOD 3: Interactive Menu (Recommended)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-❓ TROUBLESHOOTING:
+TROUBLESHOOTING:
 
   Provider not found?
   → Check ~/.metatron/config.yml exists
@@ -160,7 +160,7 @@ METHOD 3: Interactive Menu (Recommended)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📝 FILE STRUCTURE:
+FILE STRUCTURE:
 
   ~/.metatron/config.yml          ← Your config file (created automatically)
   /METATRON/llm_providers.py      ← Provider implementations
@@ -171,7 +171,7 @@ METHOD 3: Interactive Menu (Recommended)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 NEXT STEPS:
+NEXT STEPS:
 
   1. Run: pip install -r requirements.txt
   2. Run: python metatron.py

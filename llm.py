@@ -399,7 +399,7 @@ List all vulnerabilities, fixes, and suggest exploits where applicable."""
     final_response = ""
 
     for loop in range(MAX_TOOL_LOOPS):
-        # ✅ Use provider abstraction instead of ask_ollama()
+        # Use provider abstraction instead of ask_ollama()
         response = provider.ask(messages)
 
         print(f"\n{'─'*60}")
