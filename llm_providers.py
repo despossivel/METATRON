@@ -14,6 +14,10 @@ import json
 from datetime import datetime
 import time
 
+import httpx
+import openai
+from openai import OpenAI
+
 
 MODEL_CONTEXT_WINDOWS = {
     # OpenAI
@@ -354,24 +358,43 @@ class OpenAIProvider(LLMProvider):
         if not self.api_key:
             raise ValueError("OpenAI API key not configured")
 
-        from openai import OpenAI
+        try:
+            return OpenAI(api_key=self.api_key)
+        except TypeError as e:
+            # Some openai/httpx combinations may pass `proxies` internally, while
+            # newer httpx versions expect `proxy`.
+            if "proxies" in str(e).lower():
+                return OpenAI(api_key=self.api_key, http_client=httpx.Client())
+            raise
 
-        return OpenAI(api_key=self.api_key)
-    
+    def _is_legacy_client(self, client) -> bool:
+        return not hasattr(client, "chat") or not hasattr(client.chat, "completions")
+
     def ask(self, messages: List[Dict]) -> str:
         try:
             client = self._get_client()
             prepared_messages = self._prepare_messages(messages)
             response_tokens = self._calculate_response_tokens(prepared_messages)
 
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=prepared_messages,
-                temperature=self.temperature,
-                max_tokens=response_tokens,
-                timeout=60
-            )
-            content = response.choices[0].message.content
+            if self._is_legacy_client(client):
+                response = client.ChatCompletion.create(
+                    model=self.model,
+                    messages=prepared_messages,
+                    temperature=self.temperature,
+                    max_tokens=response_tokens,
+                    timeout=60
+                )
+                content = response["choices"][0]["message"]["content"]
+            else:
+                response = client.chat.completions.create(
+                    model=self.model,
+                    messages=prepared_messages,
+                    temperature=self.temperature,
+                    max_tokens=response_tokens,
+                    timeout=60
+                )
+                content = response.choices[0].message.content
+
             return content.strip() if content else "[!] OpenAI returned empty response."
         except ImportError:
             return "[!] openai package not installed. Install with: pip install openai"
@@ -381,7 +404,12 @@ class OpenAIProvider(LLMProvider):
     def validate(self) -> tuple[bool, str]:
         try:
             client = self._get_client()
-            client.models.list()
+            if hasattr(client, "models"):
+                client.models.list()
+            elif hasattr(client, "Model"):
+                client.Model.list()
+            else:
+                return (False, "OpenAI client is not compatible with this code path")
             return (True, "OpenAI API key valid")
         except ImportError:
             return (False, "openai package not installed")
