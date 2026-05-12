@@ -9,6 +9,7 @@ import os
 import sys
 from db import (
     get_connection,
+    initialize_schema,
     create_session,
     save_vulnerability,
     save_fix,
@@ -438,6 +439,7 @@ def check_db():
     try:
         conn = get_connection()
         conn.close()
+        initialize_schema()
         return True
     except Exception as e:
         error(f"MariaDB connection failed: {e}")
