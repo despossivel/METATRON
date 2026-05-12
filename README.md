@@ -28,7 +28,7 @@ You give it a target IP or domain. It runs real recon tools (nmap, whois, whatwe
 ## ✨ Features
 
 - 🤖 **Local AI Analysis** — powered by `metatron-qwen` via Ollama, runs 100% offline
-- 🔍 **Automated Recon** — nmap, whois, whatweb, curl headers, dig DNS, nikto
+- 🔍 **Automated Recon** — nmap, whois, whatweb, curl headers, dig DNS, nikto, sslscan, testssl.sh
 - 🌐 **Web Search** — DuckDuckGo search + CVE lookup (no API key needed)
 - 🗄️ **MariaDB Backend** — full scan history with 5 linked tables
 - ✏️ **Edit / Delete** — modify any saved result directly from the CLI
