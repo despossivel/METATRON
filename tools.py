@@ -2,7 +2,7 @@
 """
 METATRON - tools.py
 Recon tool runners — all output returned as strings to feed into the LLM.
-Tools used: nmap, whois, whatweb, curl, dig, nikto
+Tools used: nmap, whois, whatweb, curl, dig, nikto, sslscan, testssl.sh
 OS: Parrot OS (all these tools are pre-installed or easily available)
 """
 
@@ -132,6 +132,22 @@ def run_nikto(target: str) -> str:
     return run_tool(["nikto", "-h", target, "-nointeractive"], timeout=300)
 
 
+def run_sslscan(target: str) -> str:
+    """
+    sslscan — quick TLS/SSL scan for certificates, protocol support and ciphers.
+    """
+    print(f"  [*] sslscan --no-colour {target}")
+    return run_tool(["sslscan", "--no-colour", target], timeout=240)
+
+
+def run_testssl(target: str) -> str:
+    """
+    testssl.sh — deeper TLS/SSL analysis for protocol, cipher and cert vulnerabilities.
+    """
+    print(f"  [*] testssl.sh --quiet {target}")
+    return run_tool(["testssl.sh", "--quiet", target], timeout=300)
+
+
 # ─────────────────────────────────────────────
 # MAIN RECON PIPELINE
 # ─────────────────────────────────────────────
@@ -143,6 +159,8 @@ TOOLS_MENU = {
     "4": ("curl headers", run_curl_headers),
     "5": ("dig DNS",      run_dig),
     "6": ("nikto",        run_nikto),
+    "7": ("sslscan",      run_sslscan),
+    "8": ("testssl.sh",   run_testssl),
 }
 
 
@@ -189,7 +207,7 @@ def format_recon_for_llm(results: dict) -> str:
     return output
 
 
-ALLOWED_TOOLS = {"nmap", "whois", "whatweb", "curl", "dig", "nikto"}
+ALLOWED_TOOLS = {"nmap", "whois", "whatweb", "curl", "dig", "nikto", "sslscan", "testssl.sh"}
 
 def run_tool_by_command(command_str: str) -> str:
     parts = command_str.strip().split()
