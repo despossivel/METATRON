@@ -14,6 +14,8 @@ import json
 from datetime import datetime
 import time
 
+import httpx
+
 
 MODEL_CONTEXT_WINDOWS = {
     # OpenAI
@@ -356,7 +358,12 @@ class OpenAIProvider(LLMProvider):
 
         from openai import OpenAI
 
-        return OpenAI(api_key=self.api_key)
+        try:
+            return OpenAI(api_key=self.api_key)
+        except TypeError as e:
+            if "proxies" in str(e).lower():
+                return OpenAI(api_key=self.api_key, http_client=httpx.Client())
+            raise
     
     def ask(self, messages: List[Dict]) -> str:
         try:

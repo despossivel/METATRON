@@ -268,7 +268,25 @@ def append_scan_to_session(sl_no: int, target: str):
     ) if existing_raw_scan else new_scan_data
 
     divider("AI ANALYSIS")
-    result = analyse_target(target, raw_scan)
+    try:
+        active_provider = get_active_provider()
+        provider_config = get_resolved_provider_config(active_provider)
+        provider = LLMProviderFactory.create(active_provider, provider_config)
+
+        if not provider:
+            error(f"Provider '{active_provider}' not found!")
+            return
+
+        is_valid, msg = provider.validate()
+        if not is_valid:
+            error(f"Provider validation failed: {msg}")
+            return
+
+        info(f"Using {provider.get_model_info()['provider']}")
+        result = analyse_target_with_provider(provider, target, raw_scan)
+    except Exception as e:
+        error(f"Analysis error: {e}")
+        return
 
     divider("SAVING TO DATABASE")
     for vuln in result["vulnerabilities"]:
