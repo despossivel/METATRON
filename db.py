@@ -209,16 +209,16 @@ def save_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
 
 
 def update_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
-    """Insert or update the summary row for an existing session."""
+    """Update the existing summary for a session or insert a new one."""
     conn = get_connection()
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c.execute("SELECT sl_no FROM summary WHERE sl_no = %s", (sl_no,))
-    if c.fetchone():
+    c.execute("SELECT id FROM summary WHERE sl_no = %s ORDER BY generated_at DESC LIMIT 1", (sl_no,))
+    row = c.fetchone()
+    if row:
         c.execute(
-            "UPDATE summary SET raw_scan = %s, ai_analysis = %s, risk_level = %s, generated_at = %s "
-            "WHERE sl_no = %s",
-            (raw_scan, ai_analysis, risk_level, now, sl_no)
+            "UPDATE summary SET raw_scan = %s, ai_analysis = %s, risk_level = %s, generated_at = %s WHERE id = %s",
+            (raw_scan, ai_analysis, risk_level, now, row[0])
         )
     else:
         c.execute("""
@@ -227,19 +227,6 @@ def update_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str)
         """, (sl_no, raw_scan, ai_analysis, risk_level, now))
     conn.commit()
     conn.close()
-
-
-def get_latest_history_for_target(target: str):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute(
-        "SELECT sl_no, target, scan_date, status FROM history "
-        "WHERE target = %s ORDER BY sl_no DESC LIMIT 1",
-        (target,)
-    )
-    row = c.fetchone()
-    conn.close()
-    return row
 
 
 # ─────────────────────────────────────────────
@@ -283,7 +270,7 @@ def get_session(sl_no: int) -> dict:
     c.execute("SELECT * FROM exploits_attempted WHERE sl_no = %s", (sl_no,))
     exploits = c.fetchall()
 
-    c.execute("SELECT * FROM summary WHERE sl_no = %s", (sl_no,))
+    c.execute("SELECT * FROM summary WHERE sl_no = %s ORDER BY generated_at DESC LIMIT 1", (sl_no,))
     summary = c.fetchone()
 
     conn.close()
