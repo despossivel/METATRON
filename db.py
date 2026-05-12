@@ -142,7 +142,7 @@ def get_session(sl_no: int) -> dict:
     c.execute("SELECT * FROM exploits_attempted WHERE sl_no = %s", (sl_no,))
     exploits = c.fetchall()
 
-    c.execute("SELECT * FROM summary WHERE sl_no = %s", (sl_no,))
+    c.execute("SELECT * FROM summary WHERE sl_no = %s ORDER BY generated_at DESC LIMIT 1", (sl_no,))
     summary = c.fetchone()
 
     conn.close()

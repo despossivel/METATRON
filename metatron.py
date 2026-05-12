@@ -169,12 +169,124 @@ def new_scan():
     success(f"All data saved. SL# {sl_no} | Risk: {result['risk_level']}")
     divider()
 
-    # show results and offer edit/delete
+    # show results and offer follow-up actions
     data = get_session(sl_no)
     print_session(data)
+    _scan_followup_menu(sl_no, target)
 
-    if confirm("Edit or delete anything in this session?"):
-        edit_delete_menu(sl_no)
+
+# ─────────────────────────────────────────────
+# ADDITIONAL SCAN / POST-SCAN FLOW
+# ─────────────────────────────────────────────
+
+def append_scan_to_session(sl_no: int, target: str):
+    divider("ADDITIONAL SCAN")
+    info("Choose additional scanner tools to run:")
+    new_scan_data = interactive_tool_run(target)
+
+    if not new_scan_data.strip():
+        warn("No scan data collected. Aborting.")
+        return
+
+    full_raw_scan = (
+        f"{new_scan_data}\n\n"
+        f"{'='*60}\n"
+        f"[ADDED SCAN - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n"
+        f"{'='*60}\n"
+        f"{new_scan_data}"
+    )
+
+    context_note = (
+        "[ADDITIONAL SCAN DATA]\n"
+        "This is additional scan output for an existing session. "
+        "Focus only on the new findings from this scan, and do not repeat prior scan results unless they are directly relevant."
+    )
+
+    # send to AI
+    divider("AI ANALYSIS")
+    result = analyse_target(target, new_scan_data, context_note)
+
+    divider("SAVING TO DATABASE")
+    for vuln in result["vulnerabilities"]:
+        vuln_id = save_vulnerability(
+            sl_no,
+            vuln["vuln_name"],
+            vuln["severity"],
+            vuln["port"],
+            vuln["service"],
+            vuln["description"]
+        )
+        if vuln.get("fix"):
+            save_fix(sl_no, vuln_id, vuln["fix"], source="ai")
+        success(f"Saved vuln: {vuln['vuln_name']} [{vuln['severity']}]")
+
+    for exp in result["exploits"]:
+        save_exploit(
+            sl_no,
+            exp["exploit_name"],
+            exp["tool_used"],
+            exp["payload"],
+            exp["result"],
+            exp["notes"]
+        )
+        success(f"Saved exploit: {exp['exploit_name']}")
+
+    save_summary(
+        sl_no,
+        full_raw_scan,
+        result["full_response"],
+        result["risk_level"]
+    )
+
+    success(f"Additional scan saved. SL# {sl_no} | Risk: {result['risk_level']}")
+    divider()
+
+    print(f"\n[+] Added scan results for SL# {sl_no}:")
+    if result["vulnerabilities"]:
+        print("\n[ NEW VULNERABILITIES ]")
+        for vuln in result["vulnerabilities"]:
+            print(f"  - {vuln['vuln_name']} | {vuln['severity']} | Port {vuln['port']} | {vuln['service']}")
+    else:
+        print("  No new vulnerabilities found.")
+
+    if result["exploits"]:
+        print("\n[ NEW EXPLOITS ]")
+        for exp in result["exploits"]:
+            print(f"  - {exp['exploit_name']} | Tool: {exp['tool_used']} | Result: {exp['result']}")
+    else:
+        print("  No new exploits recorded.")
+
+    print(f"\n[ ADDED SCAN RISK ] {result['risk_level']}")
+    _scan_followup_menu(sl_no, target)
+
+
+def _scan_followup_menu(sl_no: int, target: str):
+    while True:
+        divider("POST-SCAN OPTIONS")
+        print("  [1] Run another scanner")
+        print("  [2] View full session report")
+        print("  [3] Export report")
+        print("  [4] Edit/delete session")
+        print("  [5] Done")
+        divider()
+
+        choice = prompt("Choose an action: ")
+
+        if choice == "1":
+            append_scan_to_session(sl_no, target)
+            return
+        elif choice == "2":
+            data = get_session(sl_no)
+            print_session(data)
+        elif choice == "3":
+            data = get_session(sl_no)
+            export_menu(data)
+        elif choice == "4":
+            edit_delete_menu(sl_no)
+        elif choice == "5":
+            break
+        else:
+            warn("Invalid choice.")
 
 
 # ─────────────────────────────────────────────
