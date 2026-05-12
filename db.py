@@ -101,6 +101,27 @@ def save_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
     conn.close()
 
 
+def update_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
+    """Update the existing summary for a session or insert a new one."""
+    conn = get_connection()
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("SELECT id FROM summary WHERE sl_no = %s ORDER BY generated_at DESC LIMIT 1", (sl_no,))
+    row = c.fetchone()
+    if row:
+        c.execute(
+            "UPDATE summary SET raw_scan = %s, ai_analysis = %s, risk_level = %s, generated_at = %s WHERE id = %s",
+            (raw_scan, ai_analysis, risk_level, now, row[0])
+        )
+    else:
+        c.execute("""
+            INSERT INTO summary (sl_no, raw_scan, ai_analysis, risk_level, generated_at)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (sl_no, raw_scan, ai_analysis, risk_level, now))
+    conn.commit()
+    conn.close()
+
+
 # ─────────────────────────────────────────────
 # READ FUNCTIONS
 # ─────────────────────────────────────────────
@@ -142,7 +163,7 @@ def get_session(sl_no: int) -> dict:
     c.execute("SELECT * FROM exploits_attempted WHERE sl_no = %s", (sl_no,))
     exploits = c.fetchall()
 
-    c.execute("SELECT * FROM summary WHERE sl_no = %s", (sl_no,))
+    c.execute("SELECT * FROM summary WHERE sl_no = %s ORDER BY generated_at DESC LIMIT 1", (sl_no,))
     summary = c.fetchone()
 
     conn.close()

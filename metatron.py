@@ -14,6 +14,7 @@ from db import (
     save_fix,
     save_exploit,
     save_summary,
+    update_summary,
     get_all_history,
     get_history_by_sl_no,
     get_session,
@@ -106,28 +107,55 @@ def new_scan():
     # check if target was scanned before
     history = get_all_history()
     past = [row for row in history if row[1] == target]
+    existing_session = None
+    existing_raw_scan = ""
     if past:
         warn(f"Target '{target}' has been scanned before ({len(past)} time(s)).")
-        if not confirm("Continue with a new scan?"):
+        if not confirm("Continue with this target and append new scan results to the existing session?"):
             return
-
-    # create session in history table first
-    sl_no = create_session(target)
-    success(f"Session created — SL# {sl_no}")
+        existing_session = past[0]
+        sl_no = existing_session[0]
+        session_data = get_session(sl_no)
+        summary_row = session_data.get("summary")
+        if summary_row and summary_row[2]:
+            existing_raw_scan = summary_row[2]
+        success(f"Resuming session — SL# {sl_no}")
+    else:
+        sl_no = create_session(target)
+        success(f"Session created — SL# {sl_no}")
 
     # run recon tools
     divider("RECON")
     info("Choose recon tools to run:")
-    raw_scan = interactive_tool_run(target)
+    new_scan_data = interactive_tool_run(target)
 
-    if not raw_scan.strip():
+    if not new_scan_data.strip():
         warn("No scan data collected. Aborting.")
-        delete_full_session(sl_no)
+        if not existing_session:
+            delete_full_session(sl_no)
         return
+
+    combined_raw_scan = (
+        f"{existing_raw_scan}\n\n"
+        f"{'='*60}\n"
+        f"[ADDED SCAN - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n"
+        f"{'='*60}\n"
+        f"{new_scan_data}"
+    ) if existing_raw_scan else new_scan_data
+
+    analysis_input = new_scan_data
+    context_note = ""
+    if existing_session:
+        context_note = (
+            "[ADDITIONAL SCAN DATA]\n"
+            "This is additional scan output for an existing session. "
+            "Focus on new findings and do not repeat previous scan results "
+            "unless they are directly relevant to the new information."
+        )
 
     # send to AI
     divider("AI ANALYSIS")
-    result = analyse_target(target, raw_scan)
+    result = analyse_target(target, analysis_input, context_note)
 
     # ── save everything to DB ──────────────────
     divider("SAVING TO DATABASE")
@@ -158,20 +186,50 @@ def new_scan():
         )
         success(f"Saved exploit: {exp['exploit_name']}")
 
-    # save summary
-    save_summary(
-        sl_no,
-        result["raw_scan"],
-        result["full_response"],
-        result["risk_level"]
-    )
+    # save or update summary
+    if existing_session:
+        update_summary(
+            sl_no,
+            combined_raw_scan,
+            result["full_response"],
+            result["risk_level"]
+        )
+    else:
+        save_summary(
+            sl_no,
+            combined_raw_scan,
+            result["full_response"],
+            result["risk_level"]
+        )
 
     success(f"All data saved. SL# {sl_no} | Risk: {result['risk_level']}")
     divider()
 
-    # show results and offer edit/delete
-    data = get_session(sl_no)
-    print_session(data)
+    # show a quick delta summary first for appended scans
+    if existing_session:
+        print(f"\n[+] Added scan results for existing session SL# {sl_no}:")
+        if result["vulnerabilities"]:
+            print("\n[ NEW VULNERABILITIES ]")
+            for vuln in result["vulnerabilities"]:
+                print(f"  - {vuln['vuln_name']} | {vuln['severity']} | Port {vuln['port']} | {vuln['service']}")
+        else:
+            print("  No new vulnerabilities found.")
+
+        if result["exploits"]:
+            print("\n[ NEW EXPLOITS ]")
+            for exp in result["exploits"]:
+                print(f"  - {exp['exploit_name']} | Tool: {exp['tool_used']} | Result: {exp['result']}")
+        else:
+            print("  No new exploits recorded.")
+
+        print(f"\n[ ADDED SCAN RISK ] {result['risk_level']}")
+        if confirm(f"View full session report for SL# {sl_no}? "):
+            data = get_session(sl_no)
+            print_session(data)
+    else:
+        # show results and offer edit/delete
+        data = get_session(sl_no)
+        print_session(data)
 
     if confirm("Edit or delete anything in this session?"):
         edit_delete_menu(sl_no)

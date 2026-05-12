@@ -296,7 +296,8 @@ def parse_summary(response: str) -> str:
 # MAIN ANALYSIS FUNCTION
 # ─────────────────────────────────────────────
 
-def analyse_target(target: str, raw_scan: str) -> dict:
+def analyse_target(target: str, raw_scan: str, context_note: str = "") -> dict:
+    note_text = f"{context_note}\n\n" if context_note else ""
     messages = [
         {
             "role": "system",
@@ -304,7 +305,7 @@ def analyse_target(target: str, raw_scan: str) -> dict:
         },
         {
             "role": "user",
-            "content": f"""TARGET: {target}
+            "content": f"""{note_text}TARGET: {target}
 
 RECON DATA:
 {raw_scan}
