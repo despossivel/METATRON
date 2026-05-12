@@ -44,9 +44,27 @@ def create_session(target: str) -> int:
 
 def save_vulnerability(sl_no: int, vuln_name: str, severity: str,
                        port: str, service: str, description: str) -> int:
-    """Insert a vulnerability. Returns its id."""
+    """Insert or update a vulnerability. Returns its id."""
     conn = get_connection()
     c = conn.cursor()
+    c.execute(
+        "SELECT id, severity, description FROM vulnerabilities "
+        "WHERE sl_no = %s AND vuln_name = %s AND port = %s AND service = %s",
+        (sl_no, vuln_name, port, service)
+    )
+    existing = c.fetchone()
+    if existing:
+        vuln_id, existing_severity, existing_description = existing
+        if severity != existing_severity or description != existing_description:
+            c.execute(
+                "UPDATE vulnerabilities SET severity = %s, description = %s "
+                "WHERE id = %s",
+                (severity, description, vuln_id)
+            )
+            conn.commit()
+        conn.close()
+        return vuln_id
+
     c.execute("""
         INSERT INTO vulnerabilities (sl_no, vuln_name, severity, port, service, description)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -58,9 +76,16 @@ def save_vulnerability(sl_no: int, vuln_name: str, severity: str,
 
 
 def save_fix(sl_no: int, vuln_id: int, fix_text: str, source: str = "ai"):
-    """Insert a fix linked to a vulnerability."""
+    """Insert or ignore duplicate fix linked to a vulnerability."""
     conn = get_connection()
     c = conn.cursor()
+    c.execute(
+        "SELECT id FROM fixes WHERE sl_no = %s AND vuln_id = %s AND fix_text = %s",
+        (sl_no, vuln_id, fix_text)
+    )
+    if c.fetchone():
+        conn.close()
+        return
     c.execute("""
         INSERT INTO fixes (sl_no, vuln_id, fix_text, source)
         VALUES (%s, %s, %s, %s)
@@ -72,20 +97,45 @@ def save_fix(sl_no: int, vuln_id: int, fix_text: str, source: str = "ai"):
 def save_exploit(sl_no, exploit_name, tool_used, payload, result, notes):
     conn = get_connection()
     c = conn.cursor()
+    exploit_name = str(exploit_name or "")[:1000]
+    tool_used = str(tool_used or "")[:500]
+    payload = str(payload or "")
+    result = str(result or "")[:2000]
+    notes = str(notes or "")
+
+    c.execute(
+        "SELECT id, result, notes FROM exploits_attempted "
+        "WHERE sl_no = %s AND exploit_name = %s AND tool_used = %s AND payload = %s",
+        (sl_no, exploit_name, tool_used, payload)
+    )
+    existing = c.fetchone()
+    if existing:
+        exploit_id, existing_result, existing_notes = existing
+        if result != existing_result or notes != existing_notes:
+            c.execute(
+                "UPDATE exploits_attempted SET result = %s, notes = %s WHERE id = %s",
+                (result, notes, exploit_id)
+            )
+            conn.commit()
+        conn.close()
+        return exploit_id
+
     c.execute("""
         INSERT INTO exploits_attempted 
         (sl_no, exploit_name, tool_used, payload, result, notes)
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (
         sl_no,
-        str(exploit_name or "")[:1000],
-        str(tool_used  or "")[:500],
-        str(payload    or ""),
-        str(result     or "")[:2000],
-        str(notes      or "")
+        exploit_name,
+        tool_used,
+        payload,
+        result,
+        notes
     ))
     conn.commit()
+    exploit_id = c.lastrowid
     conn.close()
+    return exploit_id
 
 
 def save_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
@@ -99,6 +149,40 @@ def save_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
     """, (sl_no, raw_scan, ai_analysis, risk_level, now))
     conn.commit()
     conn.close()
+
+
+def update_summary(sl_no: int, raw_scan: str, ai_analysis: str, risk_level: str):
+    """Insert or update the summary row for an existing session."""
+    conn = get_connection()
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("SELECT sl_no FROM summary WHERE sl_no = %s", (sl_no,))
+    if c.fetchone():
+        c.execute(
+            "UPDATE summary SET raw_scan = %s, ai_analysis = %s, risk_level = %s, generated_at = %s "
+            "WHERE sl_no = %s",
+            (raw_scan, ai_analysis, risk_level, now, sl_no)
+        )
+    else:
+        c.execute("""
+            INSERT INTO summary (sl_no, raw_scan, ai_analysis, risk_level, generated_at)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (sl_no, raw_scan, ai_analysis, risk_level, now))
+    conn.commit()
+    conn.close()
+
+
+def get_latest_history_for_target(target: str):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT sl_no, target, scan_date, status FROM history "
+        "WHERE target = %s ORDER BY sl_no DESC LIMIT 1",
+        (target,)
+    )
+    row = c.fetchone()
+    conn.close()
+    return row
 
 
 # ─────────────────────────────────────────────

@@ -14,7 +14,9 @@ from db import (
     save_fix,
     save_exploit,
     save_summary,
+    update_summary,
     get_all_history,
+    get_latest_history_for_target,
     get_session,
     get_vulnerabilities,
     get_fixes,
@@ -31,6 +33,7 @@ from db import (
     print_history,
     print_session
 )
+from datetime import datetime
 from tools import interactive_tool_run, format_recon_for_llm, run_default_recon
 from llm import analyse_target
 
@@ -105,24 +108,47 @@ def new_scan():
     # check if target was scanned before
     history = get_all_history()
     past = [row for row in history if row[1] == target]
+    sl_no = None
+    existing_raw_scan = None
+
     if past:
         warn(f"Target '{target}' has been scanned before ({len(past)} time(s)).")
-        if not confirm("Continue with a new scan?"):
+        if not confirm("Continue with this target and append new scan results to the existing session?"):
             return
 
-    # create session in history table first
-    sl_no = create_session(target)
-    success(f"Session created — SL# {sl_no}")
+        existing = get_latest_history_for_target(target)
+        sl_no = existing[0]
+        session_data = get_session(sl_no)
+        summary_row = session_data.get("summary")
+        if summary_row and summary_row[2]:
+            existing_raw_scan = summary_row[2]
+        success(f"Resuming session — SL# {sl_no}")
+
+    if not sl_no:
+        sl_no = create_session(target)
+        success(f"Session created — SL# {sl_no}")
 
     # run recon tools
     divider("RECON")
     info("Choose recon tools to run:")
-    raw_scan = interactive_tool_run(target)
+    new_scan_data = interactive_tool_run(target)
 
-    if not raw_scan.strip():
+    if not new_scan_data.strip():
         warn("No scan data collected. Aborting.")
-        delete_full_session(sl_no)
+        if not past:
+            delete_full_session(sl_no)
         return
+
+    if existing_raw_scan:
+        raw_scan = (
+            f"{existing_raw_scan}\n\n"
+            f"{'='*60}\n"
+            f"[ADDED SCAN - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n"
+            f"{'='*60}\n"
+            f"{new_scan_data}"
+        )
+    else:
+        raw_scan = new_scan_data
 
     # send to AI
     divider("AI ANALYSIS")
@@ -157,8 +183,8 @@ def new_scan():
         )
         success(f"Saved exploit: {exp['exploit_name']}")
 
-    # save summary
-    save_summary(
+    # save or update summary
+    update_summary(
         sl_no,
         result["raw_scan"],
         result["full_response"],
