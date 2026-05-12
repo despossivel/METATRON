@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
 METATRON - llm.py
-Ollama interface for metatron-qwen model.
+LLM interface for multiple providers (Ollama, OpenAI, Anthropic, Azure).
 Builds prompts, handles AI responses, runs tool dispatch loop.
-Model: metatron-qwen (fine-tuned from huihui_ai/qwen3.5-abliterated:9b)
 """
 
 import re
@@ -11,6 +10,13 @@ import requests
 import json
 from tools import run_tool_by_command, run_nmap, run_curl_headers
 from search import handle_search_dispatch
+
+# Try importing provider classes (optional for backward compatibility)
+try:
+    from llm_providers import LLMProvider, LLMProviderFactory
+except ImportError:
+    LLMProvider = None
+    LLMProviderFactory = None
 
 OLLAMA_URL  = "http://localhost:11434/api/chat"
 MODEL_NAME  = "metatron-qwen"
@@ -362,6 +368,85 @@ If analysis is complete, give the final RISK_LEVEL and SUMMARY."""
         "summary":         summary,
         "raw_scan":        raw_scan
     }
+
+
+# ─────────────────────────────────────────────
+# PROVIDER-BASED ANALYSIS (Multi-Model)
+# ─────────────────────────────────────────────
+
+def analyse_target_with_provider(provider: 'LLMProvider', target: str, raw_scan: str) -> dict:
+    """
+    Analyze target using a dynamic LLM provider.
+    Replaces ask_ollama() with provider.ask() for multi-model support.
+    """
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": f"""TARGET: {target}
+
+RECON DATA:
+{raw_scan}
+
+Analyze this target completely. Use [TOOL:] or [SEARCH:] if you need more information.
+List all vulnerabilities, fixes, and suggest exploits where applicable."""
+        }
+    ]
+
+    final_response = ""
+
+    for loop in range(MAX_TOOL_LOOPS):
+        # Use provider abstraction instead of ask_ollama()
+        response = provider.ask(messages)
+
+        print(f"\n{'─'*60}")
+        print(f"[METATRON - Round {loop + 1}]")
+        print(f"{'─'*60}")
+        print(response)
+
+        final_response = response
+
+        tool_calls = extract_tool_calls(response)
+        if not tool_calls:
+            print("\n[*] No tool calls. Analysis complete.")
+            break
+
+        tool_results = run_tool_calls(tool_calls)
+
+        # add assistant response and tool results as new messages
+        messages.append({
+            "role": "assistant",
+            "content": response
+        })
+        messages.append({
+            "role": "user",
+            "content": f"""[TOOL RESULTS]
+{tool_results}
+
+Continue your analysis with this new information.
+If analysis is complete, give the final RISK_LEVEL and SUMMARY."""
+        })
+
+    vulnerabilities = parse_vulnerabilities(final_response)
+    exploits        = parse_exploits(final_response)
+    risk_level      = parse_risk_level(final_response)
+    summary         = parse_summary(final_response)
+
+    print(f"\n[+] Parsed: {len(vulnerabilities)} vulns, {len(exploits)} exploits | Risk: {risk_level}")
+
+    return {
+        "full_response":   final_response,
+        "vulnerabilities": vulnerabilities,
+        "exploits":        exploits,
+        "risk_level":      risk_level,
+        "summary":         summary,
+        "raw_scan":        raw_scan
+    }
+
+
 # ─────────────────────────────────────────────
 # QUICK TEST
 # ─────────────────────────────────────────────
