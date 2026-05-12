@@ -108,6 +108,20 @@ pip install -r requirements.txt
 sudo apt install nmap whois whatweb curl dnsutils nikto
 ```
 
+### 5. Run MariaDB with Docker
+
+```bash
+docker compose up -d
+```
+
+This starts a MariaDB server with:
+- database: `metatron`
+- user: `metatron`
+- password: `123`
+- port: `3306`
+
+> If you prefer to keep the data after restarting, the database files are stored in a named Docker volume.
+
 ---
 
 ## 🤖 AI Model Setup
