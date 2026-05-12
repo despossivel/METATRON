@@ -21,7 +21,7 @@ AI-powered penetration testing assistant using local LLM on linux (Parrot OS)
 
 **Metatron** is a CLI-based AI penetration testing assistant that runs entirely on your local machine — no cloud, no API keys, no subscriptions.
 
-You give it a target IP or domain. It runs real recon tools (nmap, whois, whatweb, curl, dig, nikto), feeds all results to a locally running AI model, and the AI analyzes the target, identifies vulnerabilities, suggests exploits, and recommends fixes. Everything gets saved to a MariaDB database with full scan history.
+You give it a target IP or domain. It runs real recon tools (nmap, whois, whatweb, curl, dig, nikto, sslscan, testssl.sh), feeds all results to a locally running AI model, and the AI analyzes the target, identifies vulnerabilities, suggests exploits, and recommends fixes. Everything gets saved to a MariaDB database with full scan history.
 
 ---
 
