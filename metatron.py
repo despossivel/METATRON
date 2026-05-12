@@ -201,6 +201,69 @@ def new_scan():
         edit_delete_menu(sl_no)
 
 
+def append_scan_to_session(sl_no: int, target: str):
+    divider("APPEND SCAN")
+    info("Choose additional scanner tools to run:")
+    new_scan_data = interactive_tool_run(target)
+
+    if not new_scan_data.strip():
+        warn("No scan data collected. Aborting.")
+        return
+
+    session_data = get_session(sl_no)
+    summary_row = session_data.get("summary")
+    existing_raw_scan = summary_row[2] if summary_row and summary_row[2] else ""
+
+    raw_scan = (
+        f"{existing_raw_scan}\n\n"
+        f"{'='*60}\n"
+        f"[ADDED SCAN - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n"
+        f"{'='*60}\n"
+        f"{new_scan_data}"
+    ) if existing_raw_scan else new_scan_data
+
+    divider("AI ANALYSIS")
+    result = analyse_target(target, raw_scan)
+
+    divider("SAVING TO DATABASE")
+    for vuln in result["vulnerabilities"]:
+        vuln_id = save_vulnerability(
+            sl_no,
+            vuln["vuln_name"],
+            vuln["severity"],
+            vuln["port"],
+            vuln["service"],
+            vuln["description"]
+        )
+        if vuln.get("fix"):
+            save_fix(sl_no, vuln_id, vuln["fix"], source="ai")
+        success(f"Saved vuln: {vuln['vuln_name']} [{vuln['severity']}]")
+
+    for exp in result["exploits"]:
+        save_exploit(
+            sl_no,
+            exp["exploit_name"],
+            exp["tool_used"],
+            exp["payload"],
+            exp["result"],
+            exp["notes"]
+        )
+        success(f"Saved exploit: {exp['exploit_name']}")
+
+    update_summary(
+        sl_no,
+        result["raw_scan"],
+        result["full_response"],
+        result["risk_level"]
+    )
+
+    success(f"Additional scan saved. SL# {sl_no} | Risk: {result['risk_level']}")
+    divider()
+
+    data = get_session(sl_no)
+    print_session(data)
+
+
 # ─────────────────────────────────────────────
 # VIEW HISTORY
 # ─────────────────────────────────────────────
@@ -243,6 +306,10 @@ def view_history():
 
         if action == "1":
             print_session(data)
+
+            if confirm("Run another scanner on this target and append results to this session?"):
+                append_scan_to_session(sl_no, data["history"][1])
+                data = get_session(sl_no)
 
             if confirm("Export this session?"):
                 export_menu(data)
