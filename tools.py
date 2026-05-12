@@ -190,6 +190,20 @@ def format_recon_for_llm(results: dict) -> str:
 
 
 ALLOWED_TOOLS = {"nmap", "whois", "whatweb", "curl", "dig", "nikto"}
+MAX_TOOL_OUTPUT_CHARS = 3500
+QUICK_TOOL_KEYS = {"1", "2", "3", "4", "5"}
+
+
+def _truncate_tool_output(output: str) -> str:
+    if len(output) <= MAX_TOOL_OUTPUT_CHARS:
+        return output
+    half = MAX_TOOL_OUTPUT_CHARS // 2
+    return (
+        output[:half]
+        + "\n\n[... output truncated for interactivity ...]\n\n"
+        + output[-half:]
+    )
+
 
 def run_tool_by_command(command_str: str) -> str:
     parts = command_str.strip().split()
@@ -215,26 +229,35 @@ def interactive_tool_run(target: str) -> str:
     print("\n[ SELECT TOOLS TO RUN ]")
     for key, (name, _) in TOOLS_MENU.items():
         print(f"  [{key}] {name}")
+    print("  [q] Quick scan (fast subset: nmap, whois, whatweb, curl, dig)")
     print("  [a] Run all (except nikto)")
     print("  [n] Run all + nikto (slow)")
 
-    choice = input("\nChoice(s) e.g. 1 2 4 or a: ").strip().lower()
+    choice = input("\nChoice(s) e.g. 1 2 4 or q: ").strip().lower()
+
+    if choice == "q":
+        combined = {}
+        for key in QUICK_TOOL_KEYS:
+            name, func = TOOLS_MENU[key]
+            print(f"\n[*] Running {name}...")
+            combined[name] = _truncate_tool_output(func(target))
+        return format_recon_for_llm(combined)
 
     if choice == "a":
         results = run_default_recon(target)
-        return format_recon_for_llm(results)
+        return format_recon_for_llm({k: _truncate_tool_output(v) for k, v in results.items()})
 
     if choice == "n":
         results = run_default_recon(target)
-        results["nikto"] = run_nikto(target)
-        return format_recon_for_llm(results)
+        results["nikto"] = _truncate_tool_output(run_nikto(target))
+        return format_recon_for_llm({k: _truncate_tool_output(v) for k, v in results.items()})
 
     combined = {}
     for key in choice.split():
         if key in TOOLS_MENU:
             name, func = TOOLS_MENU[key]
             print(f"\n[*] Running {name}...")
-            combined[name] = func(target)
+            combined[name] = _truncate_tool_output(func(target))
         else:
             print(f"[!] Unknown option: {key}")
 
