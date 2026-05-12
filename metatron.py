@@ -13,7 +13,6 @@ from db import (
     save_vulnerability,
     save_fix,
     save_exploit,
-    save_summary,
     update_summary,
     get_all_history,
     get_latest_history_for_target,

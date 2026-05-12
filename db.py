@@ -199,6 +199,16 @@ def get_all_history():
     return rows
 
 
+def get_history_by_sl_no(sl_no: int):
+    """Return one history row by sl_no, or None if not found."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT sl_no, target, scan_date, status FROM history WHERE sl_no = %s", (sl_no,))
+    row = c.fetchone()
+    conn.close()
+    return row
+
+
 def get_session(sl_no: int) -> dict:
     """Return everything linked to a sl_no across all tables."""
     conn = get_connection()
